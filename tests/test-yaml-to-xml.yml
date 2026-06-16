@@ -1,0 +1,39 @@
+name: Test YAML to XML conversion
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create input YAML file
+        run: |
+          cat > /tmp/input.yaml << 'EOF'
+          root:
+            item: hello
+            count: 5
+          EOF
+      - id: action
+        uses: .
+        with:
+          input: /tmp/input.yaml
+          from: yaml
+          to: xml
+      - name: Assert output contains XML tags
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if echo "$ACTUAL" | grep -q "<root>"; then
+            echo "PASS: found '<root>' tag in XML output"
+          else
+            echo "FAIL: expected '<root>' tag in XML output"
+            exit 1
+          fi
+          if echo "$ACTUAL" | grep -q "<item>hello</item>"; then
+            echo "PASS: found '<item>hello</item>' in XML output"
+          else
+            echo "FAIL: expected '<item>hello</item>' in XML output"
+            exit 1
+          fi
+          echo "PASS"

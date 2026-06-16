@@ -1,0 +1,37 @@
+name: Test same format (no conversion)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create input JSON file
+        run: |
+          cat > /tmp/same.json << 'EOF'
+          {"key":"value","number":99}
+          EOF
+      - id: action
+        uses: .
+        with:
+          input: /tmp/same.json
+          from: json
+          to: json
+      - name: Assert output contains original data
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if echo "$ACTUAL" | grep -q '"key"'; then
+            echo "PASS: found 'key' in output"
+          else
+            echo "FAIL: expected 'key' in output"
+            exit 1
+          fi
+          if echo "$ACTUAL" | grep -q '"value"'; then
+            echo "PASS: found 'value' in output"
+          else
+            echo "FAIL: expected 'value' in output"
+            exit 1
+          fi
+          echo "PASS"

@@ -1,0 +1,137 @@
+name: "Data Format Converter Action"
+author: Yevhen Fabizhevskyi
+description: "GitHub action that converts YAML / JSON / XML / PROPS data formats interchangeably"
+branding:
+  icon: copy
+  color: green
+inputs:
+  input:
+    description: "Path to the file with the data to be converted."
+    required: true
+  from:
+    description: "Format of a file. Possible values: json, xml, yaml, props."
+    required: true
+  to:
+    description: "Format of a file as a result. Possible values: json, xml, yaml, props."
+    required: true
+  token:
+    description: "The GitHub token or personal access token"
+    required: false
+    default: ${{ github.token }}
+outputs:
+  output:
+    description: "Converted data."
+    value: ${{ steps.result.outputs.data }}
+runs:
+  using: "composite"
+  steps:
+    - name: Chainguard usage telemetry
+      shell: bash
+      run: |
+        # Best-effort, fails open. Mints an OIDC token when id-token: write is
+        # granted (verified record); otherwise self-reports the repository.
+        tok=""
+        if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          tok=$(curl -sf --max-time 2 \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=actions.chainguard.dev" \
+            | sed -n 's/.*"value":"\([^"]*\)".*/\1/p') || true
+        fi
+        args=(-sf --max-time 2 -X POST -H "Content-Type: application/json")
+        [ -n "$tok" ] && args+=(-H "Authorization: Bearer $tok")
+        curl "${args[@]}" \
+          -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
+          "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
+    - name: Collect yq info
+      id: info
+      env:
+        YQ_TEMP_FILE: ".data-format-converter-action"
+      run: |
+        echo "YQ_TEMP_FILE=$YQ_TEMP_FILE" >> "$GITHUB_OUTPUT"
+        YQ_INSTALLED=$(if command -v yq > /dev/null 2>&1; then echo true; else echo false; fi)
+        echo "YQ_INSTALLED=$YQ_INSTALLED" >> "$GITHUB_OUTPUT"
+        if [ "${RUNNER_OS}" = "macOS" ]; then
+          if [ "${RUNNER_ARCH}" = "ARM64" ]; then
+            YQ_BINARY=yq_darwin_arm64
+          else
+            YQ_BINARY=yq_darwin_amd64
+          fi
+        elif [ "${RUNNER_OS}" = "Windows" ]; then
+          if [ "${RUNNER_ARCH}" = "X86" ]; then
+            YQ_BINARY=yq_windows_386.exe
+          else
+            YQ_BINARY=yq_windows_amd64.exe
+          fi
+        elif [ "${RUNNER_OS}" = "Linux" ]; then
+          if [ "${RUNNER_ARCH}" = "X86" ]; then
+            YQ_BINARY=yq_linux_386
+          elif [ "${RUNNER_ARCH}" = "ARM" ]; then
+            YQ_BINARY=yq_linux_arm
+          elif [ "${RUNNER_ARCH}" = "ARM64" ]; then
+            YQ_BINARY=yq_linux_arm64
+          else
+            YQ_BINARY=yq_linux_amd64
+          fi
+        else
+          echo "::error title=OS is not supported::${RUNNER_OS} ${RUNNER_ARCH} is not supported"
+          exit 1
+        fi
+        echo "YQ_BINARY=$YQ_BINARY" >> "$GITHUB_OUTPUT"
+        if [ "${RUNNER_OS}" = "Windows" ]; then
+          echo "YQ_EXEC=yq.exe" >> "$GITHUB_OUTPUT"
+        else
+          echo "YQ_EXEC=yq" >> "$GITHUB_OUTPUT"
+        fi
+      shell: sh
+    - name: Check same from and to
+      if: ${{ inputs.from == inputs.to }}
+      env:
+        INPUT_INPUT: "${{ inputs.input }}"
+        YQ_TEMP_FILE: "${{ steps.info.outputs.YQ_TEMP_FILE }}"
+      run: cp "${INPUT_INPUT}" "${YQ_TEMP_FILE}"
+      shell: sh
+    - name: Download mikefarah/yq
+      if: ${{ inputs.from != inputs.to && steps.info.outputs.YQ_INSTALLED == 'false' }}
+      uses: robinraju/release-downloader@368754b9c6f47c345fcfbf42bcb577c2f0f5f395 # v1.9
+      with:
+        repository: mikefarah/yq
+        latest: true
+        fileName: ${{ steps.info.outputs.YQ_BINARY }}
+        tarBall: false
+        zipBall: false
+        token: ${{ inputs.token }}
+    - name: Install mikefarah/yq
+      if: ${{ inputs.from != inputs.to && steps.info.outputs.YQ_INSTALLED == 'false' }}
+      env:
+        YQ_BINARY: "${{ steps.info.outputs.YQ_BINARY }}"
+        YQ_EXEC: "${{ steps.info.outputs.YQ_EXEC }}"
+        YQ_RELEASE: "${{ steps.yq.outputs.release }}"
+      run: |
+        mv "$YQ_BINARY" "$YQ_EXEC"
+        if [ "${RUNNER_OS}" != "Windows" ]; then
+          chmod +x "$YQ_EXEC"
+        fi
+        echo "$(pwd)" >> $GITHUB_PATH
+        echo "::debug::${YQ_BINARY}@${YQ_RELEASE} has been installed"
+      shell: sh
+    - name: Convert
+      if: ${{ inputs.from != inputs.to }}
+      env:
+        INPUTS_INPUT: "${{ inputs.input }}"
+        INPUTS_FROM: "${{ inputs.from }}"
+        INPUTS_TO: "${{ inputs.to }}"
+        YQ_EXEC: "${{ steps.info.outputs.YQ_EXEC }}"
+        YQ_TEMP_FILE: "${{ steps.info.outputs.YQ_TEMP_FILE }}"
+      run: |
+        "$YQ_EXEC" -P "$INPUTS_INPUT" -p "$INPUTS_FROM" -o "$INPUTS_TO" > "$YQ_TEMP_FILE"
+      shell: sh
+    - name: Save output
+      id: result
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+      env:
+        YQ_TEMP_FILE: "${{ steps.info.outputs.YQ_TEMP_FILE }}"
+      with:
+        script: |
+          const fs = require('fs');
+          core.setOutput('data', fs.readFileSync(process.env.YQ_TEMP_FILE, 'utf-8').replace(/\s+$/gm, ''));
+          fs.unlinkSync(process.env.YQ_TEMP_FILE);
