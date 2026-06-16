@@ -1,0 +1,49 @@
+name: Test YAML to XML conversion
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create input YAML file
+        run: |
+          cat > /tmp/input.yaml << 'EOF'
+          root:
+            name: Charlie
+            score: 99
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          input: /tmp/input.yaml
+          from: yaml
+          to: xml
+
+      - name: Assert output is not empty
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output is empty"
+            exit 1
+          fi
+          echo "PASS: output is non-empty"
+
+      - name: Assert output contains XML tags
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if ! echo "$ACTUAL" | grep -q "<"; then
+            echo "FAIL: output does not appear to be XML (no '<' found)"
+            exit 1
+          fi
+          if ! echo "$ACTUAL" | grep -q "Charlie"; then
+            echo "FAIL: output does not contain expected value 'Charlie'"
+            exit 1
+          fi
+          echo "PASS: output contains XML content with expected values"

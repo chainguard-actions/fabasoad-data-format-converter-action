@@ -1,0 +1,45 @@
+name: Test YAML to JSON conversion
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create input YAML file
+        run: |
+          cat > /tmp/input.yaml << 'EOF'
+          name: Bob
+          age: 25
+          active: false
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          input: /tmp/input.yaml
+          from: yaml
+          to: json
+
+      - name: Assert output is not empty
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output is empty"
+            exit 1
+          fi
+          echo "PASS: output is non-empty"
+
+      - name: Assert output is valid JSON with expected values
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if ! echo "$ACTUAL" | python3 -c "import sys, json; data = json.load(sys.stdin); assert data['name'] == 'Bob', 'name mismatch'; assert data['age'] == 25, 'age mismatch'"; then
+            echo "FAIL: output is not valid JSON or values are incorrect"
+            exit 1
+          fi
+          echo "PASS: output is valid JSON with expected values"
