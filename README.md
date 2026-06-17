@@ -1,15 +1,46 @@
-# fabasoad/data-format-converter-action
+# Data format converter action
 
-GitHub action that converts YAML / JSON / XML / PROPS data formats interchangeably
+[![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
+![GitHub release (latest SemVer including pre-releases)](https://img.shields.io/github/v/release/fabasoad/data-format-converter-action?include_prereleases)
+![functional-tests](https://github.com/fabasoad/data-format-converter-action/actions/workflows/functional-tests.yml/badge.svg)
+![linting](https://github.com/fabasoad/data-format-converter-action/actions/workflows/linting.yml/badge.svg)
+![security](https://github.com/fabasoad/data-format-converter-action/actions/workflows/security.yml/badge.svg)
 
-Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/fabasoad/data-format-converter-action](https://github.com/fabasoad/data-format-converter-action).
+Converts data formats interchangeably. The following formats are supported: [XML](https://www.w3schools.com/xml/),
+[YAML](https://yaml.org/), [JSON](https://www.json.org/json-en.html), [PROPS](https://www.ibm.com/docs/en/was/8.5.5?topic=SSEQTP_8.5.5/com.ibm.websphere.nd.multiplatform.doc/ae/rxml_prop_file_syntax.html).
 
-## Versions
+## Inputs
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| v0.2.3 | [`v0.2.3`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0.2.3) | [`669e1dc`](https://github.com/fabasoad/data-format-converter-action/commit/669e1dc59f761c72975d528debbc75040637bc9a) |
-| v0.3.0 | [`v0.3.0`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0.3.0) | [`585a23f`](https://github.com/fabasoad/data-format-converter-action/commit/585a23fcd2b5546b69398234a5c966144286653c) |
+```yaml
+- uses: fabasoad/data-format-converter-action@v0
+  with:
+    # (Required) Path to the file with the data to be converted.
+    input: "report.xml"
+    # (Required) Format of a file. Possible values: json, xml, yaml, props.
+    from: "xml"
+    # (Required) Format of a file as a result. Possible values: json, xml, yaml,
+    # props.
+    to: "json"
+    # (Optional) The GitHub token or personal access token.
+    token: "${{ github.token }}"
+```
+
+## Outputs
+
+<!-- prettier-ignore-start -->
+| Name   | Required | Description                                            |
+|--------|----------|--------------------------------------------------------|
+| output | Yes      | Converted data is in a format defined in `to` argument |
+<!-- prettier-ignore-end -->
+
+## Documentation
+
+- [Examples](./docs/Examples.md)
+- [FAQ](./docs/FAQ.md)
+
+## Contributions
+
+![Alt](https://repobeats.axiom.co/api/embed/6cfd2a64753a4c025099fea0e006aa7ec9d7c67a.svg "Repobeats analytics image")
 
 ## Privacy
 

@@ -1,0 +1,37 @@
+name: Test JSON to YAML conversion
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create input JSON file
+        run: |
+          cat > /tmp/test-input.json << 'EOF'
+          {"name":"Alice","age":30,"active":true}
+          EOF
+      - id: action
+        uses: .
+        with:
+          input: /tmp/test-input.json
+          from: json
+          to: yaml
+      - name: Assert output contains YAML content
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual output:"
+          echo "$ACTUAL"
+          if echo "$ACTUAL" | grep -q "name: Alice"; then
+            echo "PASS: found 'name: Alice' in output"
+          else
+            echo "FAIL: expected 'name: Alice' in YAML output"
+            exit 1
+          fi
+          if echo "$ACTUAL" | grep -q "age: 30"; then
+            echo "PASS: found 'age: 30' in output"
+          else
+            echo "FAIL: expected 'age: 30' in YAML output"
+            exit 1
+          fi
