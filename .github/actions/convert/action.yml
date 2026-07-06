@@ -26,7 +26,7 @@ runs:
         INPUT_FROM: "${{ inputs.from }}"
         INPUT_TO: "${{ inputs.to }}"
         STEP_CONVERT_OUTPUT_RESULT_PATH: "${{ steps.convert.outputs.result-path }}"
-      run: cat ${STEP_CONVERT_OUTPUT_RESULT_PATH}/expected-${INPUT_FROM}.${INPUT_TO}
+      run: cat "${STEP_CONVERT_OUTPUT_RESULT_PATH}/expected-${INPUT_FROM}.${INPUT_TO}"
       shell: sh
     - name: Validate resulting ${{ inputs.to }} file
       env:

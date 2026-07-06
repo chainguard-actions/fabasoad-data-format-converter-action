@@ -105,7 +105,7 @@ runs:
             chmod +x "${yq_path}"
           fi
         fi
-        safe_yq_path="$(printf '%s' "${yq_path}" | tr -d '\n\r')"
+        safe_yq_path=$(printf '%s' "${yq_path}" | tr -d '\n\r')
         echo "yq-path=${safe_yq_path}" >> "$GITHUB_OUTPUT"
       shell: sh
     - name: Print yq version
