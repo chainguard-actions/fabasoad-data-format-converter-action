@@ -1,0 +1,73 @@
+---
+name: Test glob pattern matching multiple files
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create multiple test YAML files
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/test-data"
+          cat > "$GITHUB_WORKSPACE/test-data/app.yaml" <<'EOF'
+          name: app
+          version: 1
+          EOF
+          cat > "$GITHUB_WORKSPACE/test-data/db.yaml" <<'EOF'
+          name: db
+          version: 2
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          source-pattern: "${{ github.workspace }}/test-data/*.yaml"
+          from: yaml
+          to: json
+
+      - name: Assert result-path output is set
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "result-path: $RESULT_PATH"
+          if [ -z "$RESULT_PATH" ]; then
+            echo "FAIL: result-path output is empty"
+            exit 1
+          fi
+          echo "PASS: result-path is set"
+
+      - name: Assert both JSON files exist
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "Files in result directory:"
+          ls -la "$RESULT_PATH"
+          if [ ! -f "$RESULT_PATH/app.json" ]; then
+            echo "FAIL: expected $RESULT_PATH/app.json to exist"
+            exit 1
+          fi
+          if [ ! -f "$RESULT_PATH/db.json" ]; then
+            echo "FAIL: expected $RESULT_PATH/db.json to exist"
+            exit 1
+          fi
+          echo "PASS: both app.json and db.json exist"
+
+      - name: Assert JSON files are valid
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "Content of app.json:"
+          cat "$RESULT_PATH/app.json"
+          echo "Content of db.json:"
+          cat "$RESULT_PATH/db.json"
+          if ! python3 -c "import json; json.load(open('$RESULT_PATH/app.json'))" 2>&1; then
+            echo "FAIL: app.json is not valid JSON"
+            exit 1
+          fi
+          if ! python3 -c "import json; json.load(open('$RESULT_PATH/db.json'))" 2>&1; then
+            echo "FAIL: db.json is not valid JSON"
+            exit 1
+          fi
+          echo "PASS: both JSON files are valid"

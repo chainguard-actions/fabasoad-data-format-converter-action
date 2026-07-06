@@ -1,0 +1,60 @@
+---
+name: Test auto-detection of source format from file extension
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create test JSON file
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/test-data"
+          cat > "$GITHUB_WORKSPACE/test-data/data.json" <<'EOF'
+          {
+            "project": "test",
+            "enabled": true
+          }
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          source-pattern: "${{ github.workspace }}/test-data/data.json"
+          to: yaml
+
+      - name: Assert result-path output is set
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "result-path: $RESULT_PATH"
+          if [ -z "$RESULT_PATH" ]; then
+            echo "FAIL: result-path output is empty"
+            exit 1
+          fi
+          echo "PASS: result-path is set"
+
+      - name: Assert converted YAML file exists
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "Checking for data.yaml in $RESULT_PATH"
+          if [ ! -f "$RESULT_PATH/data.yaml" ]; then
+            echo "FAIL: expected $RESULT_PATH/data.yaml to exist"
+            ls -la "$RESULT_PATH" || true
+            exit 1
+          fi
+          echo "PASS: data.yaml exists"
+
+      - name: Assert YAML content contains expected keys
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "Content of data.yaml:"
+          cat "$RESULT_PATH/data.yaml"
+          if ! grep -q "project" "$RESULT_PATH/data.yaml"; then
+            echo "FAIL: 'project' key not found in data.yaml"
+            exit 1
+          fi
+          echo "PASS: data.yaml contains expected content"

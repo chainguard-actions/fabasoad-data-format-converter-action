@@ -1,0 +1,59 @@
+---
+name: Test same format copy (YAML to YAML)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create test YAML file
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/test-data"
+          cat > "$GITHUB_WORKSPACE/test-data/settings.yaml" <<'EOF'
+          version: "1.0"
+          environment: production
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          source-pattern: "${{ github.workspace }}/test-data/settings.yaml"
+          from: yaml
+          to: yaml
+
+      - name: Assert result-path output is set
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "result-path: $RESULT_PATH"
+          if [ -z "$RESULT_PATH" ]; then
+            echo "FAIL: result-path output is empty"
+            exit 1
+          fi
+          echo "PASS: result-path is set"
+
+      - name: Assert copied YAML file exists
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "Checking for settings.yaml in $RESULT_PATH"
+          if [ ! -f "$RESULT_PATH/settings.yaml" ]; then
+            echo "FAIL: expected $RESULT_PATH/settings.yaml to exist"
+            ls -la "$RESULT_PATH" || true
+            exit 1
+          fi
+          echo "PASS: settings.yaml exists"
+
+      - name: Assert file content is preserved
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "Content of settings.yaml:"
+          cat "$RESULT_PATH/settings.yaml"
+          if ! grep -q "production" "$RESULT_PATH/settings.yaml"; then
+            echo "FAIL: 'production' value not found in copied settings.yaml"
+            exit 1
+          fi
+          echo "PASS: file content is preserved"

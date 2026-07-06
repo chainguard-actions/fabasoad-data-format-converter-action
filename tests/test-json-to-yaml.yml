@@ -1,0 +1,66 @@
+---
+name: Test JSON to YAML conversion
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create test JSON file
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/test-data"
+          cat > "$GITHUB_WORKSPACE/test-data/config.json" <<'EOF'
+          {
+            "host": "localhost",
+            "port": 8080,
+            "debug": false
+          }
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          source-pattern: "${{ github.workspace }}/test-data/config.json"
+          from: json
+          to: yaml
+
+      - name: Assert result-path output is set
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "result-path: $RESULT_PATH"
+          if [ -z "$RESULT_PATH" ]; then
+            echo "FAIL: result-path output is empty"
+            exit 1
+          fi
+          echo "PASS: result-path is set"
+
+      - name: Assert converted YAML file exists
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "Checking for config.yaml in $RESULT_PATH"
+          if [ ! -f "$RESULT_PATH/config.yaml" ]; then
+            echo "FAIL: expected $RESULT_PATH/config.yaml to exist"
+            ls -la "$RESULT_PATH" || true
+            exit 1
+          fi
+          echo "PASS: config.yaml exists"
+
+      - name: Assert YAML content contains expected keys
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "Content of config.yaml:"
+          cat "$RESULT_PATH/config.yaml"
+          if ! grep -q "host" "$RESULT_PATH/config.yaml"; then
+            echo "FAIL: 'host' key not found in config.yaml"
+            exit 1
+          fi
+          if ! grep -q "port" "$RESULT_PATH/config.yaml"; then
+            echo "FAIL: 'port' key not found in config.yaml"
+            exit 1
+          fi
+          echo "PASS: config.yaml contains expected keys"
