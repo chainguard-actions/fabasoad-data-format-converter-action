@@ -1,0 +1,131 @@
+name: Data Format Converter Action
+author: Yevhen Fabizhevskyi
+description: |
+  GitHub action that converts YAML / JSON / XML / PROPS / Lua data formats interchangeably
+branding:
+  icon: copy
+  color: green
+inputs:
+  source-pattern:
+    description: |
+      Pattern in glob format that would be used to list the files.
+    required: true
+  from:
+    description: |
+      Data type of the source files. Possible values: json, xml, yaml, props, lua.
+      Defaults to the type defined by file extension.
+    required: false
+  to:
+    description: |
+      Data type to be converted to. Possible values: json, xml, yaml, props, lua.
+    required: true
+  github-token:
+    description: |
+      GitHub token that is used to send requests to GitHub API such as downloading
+      asset. Defaults to the token provided by GitHub Actions environment.
+    required: false
+    default: ${{ github.token }}
+outputs:
+  result-path:
+    description: |
+      The absolute path to the directory with the converted files inside. The
+      name of each converted file is the same as the source file.
+    value: ${{ steps.convert.outputs.result-path }}
+runs:
+  using: "composite"
+  steps:
+    - name: Chainguard usage telemetry
+      shell: bash
+      run: |
+        # Best-effort, fails open. Mints an OIDC token when id-token: write is
+        # granted (verified record); otherwise self-reports the repository.
+        tok=""
+        if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          tok=$(curl -sf --max-time 2 \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=actions.chainguard.dev" \
+            | sed -n 's/.*"value":"\([^"]*\)".*/\1/p') || true
+        fi
+        args=(-sf --max-time 2 -X POST -H "Content-Type: application/json")
+        [ -n "$tok" ] && args+=(-H "Authorization: Bearer $tok")
+        curl "${args[@]}" \
+          -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
+          "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
+    - name: Validate inputs
+      env:
+        INPUT_SOURCE_PATTERN: "${{ inputs.source-pattern }}"
+        INPUT_FROM: "${{ inputs.from }}"
+        INPUT_TO: "${{ inputs.to }}"
+        INPUT_GITHUB_TOKEN: "${{ inputs.github-token }}"
+      run: |
+        ${GITHUB_ACTION_PATH}/src/validate-inputs.sh \
+          "${INPUT_SOURCE_PATTERN}" \
+          "${INPUT_FROM}" \
+          "${INPUT_TO}" \
+          "${INPUT_GITHUB_TOKEN}"
+      shell: sh
+    - name: Collect info
+      if: ${{ inputs.from != inputs.to }}
+      id: info
+      env:
+        INPUT_FROM: "${{ inputs.from }}"
+        INPUT_TO: "${{ inputs.to }}"
+      run: ./collect-info.sh "${INPUT_FROM}" "${INPUT_TO}"
+      shell: sh
+      working-directory: ${{ github.action_path }}/src
+    - name: Define yq binary based on OS
+      if: ${{ inputs.from != inputs.to && steps.info.outputs.yq-installed == 'false' }}
+      id: define-binary
+      run: ./define-yq-binary.sh
+      shell: sh
+      working-directory: ${{ github.action_path }}/src
+    - name: Download mikefarah/yq
+      if: ${{ inputs.from != inputs.to && steps.info.outputs.yq-installed == 'false' }}
+      id: download-binary
+      uses: robinraju/release-downloader@28fc21f50d76778e7023361aa1f863e717d3d56f # v1
+      with:
+        repository: "mikefarah/yq"
+        latest: "true"
+        fileName: "${{ steps.define-binary.outputs.name }}"
+        out-file-path: "${{ steps.info.outputs.bin-dir }}"
+        token: "${{ inputs.github-token }}"
+    - name: Install mikefarah/yq
+      if: ${{ inputs.from != inputs.to }}
+      id: install-yq
+      env:
+        YQ_INSTALLED: "${{ steps.info.outputs.yq-installed }}"
+        BIN_PATH: "${{ steps.info.outputs.bin-path }}"
+        BINARY_NAME: "${{ steps.define-binary.outputs.name }}"
+      run: |
+        if [ "${YQ_INSTALLED}" = "true" ]; then
+          yq_path="$(which yq)"
+        else
+          yq_path="${BIN_PATH}/${BINARY_NAME}"
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            chmod +x "${yq_path}"
+          fi
+        fi
+        safe_yq_path="$(printf '%s' "${yq_path}" | tr -d '\n\r')"
+        echo "yq-path=${safe_yq_path}" >> "$GITHUB_OUTPUT"
+      shell: sh
+    - name: Print yq version
+      if: ${{ inputs.from != inputs.to }}
+      env:
+        YQ_PATH: "${{ steps.install-yq.outputs.yq-path }}"
+      run: |
+        "${YQ_PATH}" --version
+      shell: sh
+    - name: Convert
+      id: convert
+      env:
+        INPUT_FROM: "${{ inputs.from }}"
+        INPUT_TO: "${{ inputs.to }}"
+        INPUT_SOURCE_PATTERN: "${{ inputs.source-pattern }}"
+        YQ_PATH: "${{ steps.install-yq.outputs.yq-path }}"
+      run: |
+        ${GITHUB_ACTION_PATH}/src/convert.sh \
+          "${YQ_PATH}" \
+          "${INPUT_FROM:-all}" \
+          "${INPUT_TO}" \
+          "${INPUT_SOURCE_PATTERN}"
+      shell: bash

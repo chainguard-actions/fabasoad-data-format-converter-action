@@ -1,0 +1,15 @@
+---
+name: Release
+
+on: # yamllint disable-line rule:truthy
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  github:
+    name: GitHub
+    uses: fabasoad/reusable-workflows/.github/workflows/wf-github-release.yml@10062f8186847226cb4865efbb8047795d372bae # main

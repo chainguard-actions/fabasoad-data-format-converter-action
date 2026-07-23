@@ -1,0 +1,77 @@
+---
+name: Test source pattern
+
+on: # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - .github/workflows/test-source-pattern.yml
+      - src/**
+      - tests/**
+      - action.yml
+  schedule:
+    # Every Friday at 09:00 JST
+    - cron: "0 0 * * 5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  test-source-pattern:
+    name: Convert ("${{ matrix.source-pattern }}", "${{ matrix.from }}")
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source-pattern: "**/*.lua"
+            from: ""
+            to: "props"
+            expected-files-amount: "1"
+          - source-pattern: "tests/*"
+            from: ""
+            to: "props"
+            expected-files-amount: "6"
+          - source-pattern: "tests/*"
+            from: "xml"
+            to: "props"
+            expected-files-amount: "1"
+    steps:
+      - name: Checkout ${{ github.repository }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Convert
+        uses: ./
+        id: convert
+        with:
+          source-pattern: "${{ matrix.source-pattern }}"
+          from: "${{ matrix.from }}"
+          to: "${{ matrix.to }}"
+      - name: List resulting files
+        env:
+          RESULT_PATH: "${{ steps.convert.outputs.result-path }}"
+        run: ls -la "${RESULT_PATH}"
+      - name: Test action completion
+        env:
+          RESULT_PATH: "${{ steps.convert.outputs.result-path }}"
+          EXPECTED_FILES_AMOUNT: "${{ matrix.expected-files-amount }}"
+        run: |
+          test_equal() {
+            if [ "${2}" != "${3}" ]; then
+              echo "::error title=${1}::Expected: ${3}. Actual: ${2}."
+              exit 1
+            fi
+          }
+          actual_files_amount=$(find "${RESULT_PATH}" \
+            -type f \( -name "*.json" -o -name "*.xml" -o -name "*.yaml" -o -name "*.props" -o -name "*.lua" \) \
+            | wc -l | xargs)
+          test_equal "Amount of files is wrong" \
+            "${actual_files_amount}" \
+            "${EXPECTED_FILES_AMOUNT}"

@@ -1,0 +1,78 @@
+---
+name: Test YAML to XML conversion
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      RUNNER_TEMP: /tmp
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up fake yq on PATH
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/tests/fixtures/bin"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/fake-yq" "$GITHUB_WORKSPACE/tests/fixtures/bin/yq"
+          chmod +x "$GITHUB_WORKSPACE/tests/fixtures/bin/yq"
+          echo "$GITHUB_WORKSPACE/tests/fixtures/bin" >> "$GITHUB_PATH"
+          # Verify fake yq works
+          yq --version
+
+      - name: Verify fixture file exists
+        run: |
+          echo "Workspace: $GITHUB_WORKSPACE"
+          ls -la "$GITHUB_WORKSPACE/tests/fixtures/"
+          if [ ! -f "$GITHUB_WORKSPACE/tests/fixtures/sample.yaml" ]; then
+            echo "FAIL: fixture file not found"
+            exit 1
+          fi
+          echo "PASS: fixture file exists"
+
+      - name: Run YAML to XML conversion
+        id: action
+        uses: .
+        with:
+          source-pattern: "${{ github.workspace }}/tests/fixtures/sample.yaml"
+          from: yaml
+          to: xml
+
+      - name: Assert result-path output is set
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "result-path: $RESULT_PATH"
+          if [ -z "$RESULT_PATH" ]; then
+            echo "FAIL: result-path output is empty"
+            exit 1
+          fi
+          echo "PASS: result-path is set to $RESULT_PATH"
+
+      - name: Assert converted XML file exists
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "Looking for sample.xml in: $RESULT_PATH"
+          ls -la "$RESULT_PATH" || true
+          if [ ! -f "$RESULT_PATH/sample.xml" ]; then
+            echo "FAIL: expected $RESULT_PATH/sample.xml to exist"
+            exit 1
+          fi
+          echo "PASS: sample.xml exists"
+
+      - name: Assert XML content is non-empty and contains XML markers
+        env:
+          RESULT_PATH: ${{ steps.action.outputs.result-path }}
+        run: |
+          echo "Content of converted file:"
+          cat "$RESULT_PATH/sample.xml"
+          CONTENT=$(cat "$RESULT_PATH/sample.xml")
+          if [ -z "$CONTENT" ]; then
+            echo "FAIL: converted XML file is empty"
+            exit 1
+          fi
+          if ! echo "$CONTENT" | grep -q '<'; then
+            echo "FAIL: converted file does not appear to be XML (no angle brackets found)"
+            exit 1
+          fi
+          echo "PASS: XML file is non-empty and contains XML markers"
