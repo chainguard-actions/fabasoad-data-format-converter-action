@@ -1,4 +1,4 @@
-name: Test JSON to YAML conversion
+name: Test JSON same format (no conversion)
 on:
   workflow_dispatch:
 jobs:
@@ -12,9 +12,9 @@ jobs:
         with:
           input: tests/fixtures/sample.json
           from: json
-          to: yaml
+          to: json
 
-      - name: Assert output contains YAML fields
+      - name: Assert output matches original JSON content
         env:
           ACTUAL: ${{ steps.action.outputs.output }}
         run: |
@@ -23,16 +23,12 @@ jobs:
             echo "FAIL: output is empty"
             exit 1
           fi
-          if ! echo "$ACTUAL" | grep -q "name:"; then
-            echo "FAIL: expected 'name:' key in YAML output"
-            exit 1
-          fi
           if ! echo "$ACTUAL" | grep -q "Alice"; then
-            echo "FAIL: expected 'Alice' value in YAML output"
+            echo "FAIL: expected 'Alice' value in output"
             exit 1
           fi
-          if ! echo "$ACTUAL" | grep -q "age:"; then
-            echo "FAIL: expected 'age:' key in YAML output"
+          if ! echo "$ACTUAL" | grep -q "age"; then
+            echo "FAIL: expected 'age' key in output"
             exit 1
           fi
           echo "PASS"

@@ -120,11 +120,8 @@ runs:
     - name: Save output
       id: result
       uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
-      env:
-        YQ_TEMP_FILE_PATH: "${{ steps.info.outputs.yq-temp-file-path }}"
       with:
         script: |
           const fs = require('fs');
-          const tempFilePath = process.env.YQ_TEMP_FILE_PATH;
-          core.setOutput('data', fs.readFileSync(tempFilePath, 'utf-8').replace(/\s+$/gm, ''));
-          fs.unlinkSync(tempFilePath);
+          core.setOutput('data', fs.readFileSync('${{ steps.info.outputs.yq-temp-file-path }}', 'utf-8').replace(/\s+$/gm, ''));
+          fs.unlinkSync('${{ steps.info.outputs.yq-temp-file-path }}');

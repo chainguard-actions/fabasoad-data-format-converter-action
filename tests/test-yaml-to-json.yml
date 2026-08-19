@@ -7,22 +7,14 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Create input YAML file
-        run: |
-          cat > /tmp/input.yaml << 'EOF'
-          name: Bob
-          age: 25
-          active: false
-          EOF
-
       - id: action
         uses: .
         with:
-          input: /tmp/input.yaml
+          input: tests/fixtures/sample.yaml
           from: yaml
           to: json
 
-      - name: Assert output is not empty
+      - name: Assert output contains JSON fields
         env:
           ACTUAL: ${{ steps.action.outputs.output }}
         run: |
@@ -31,15 +23,16 @@ jobs:
             echo "FAIL: output is empty"
             exit 1
           fi
-          echo "PASS: output is non-empty"
-
-      - name: Assert output is valid JSON with expected values
-        env:
-          ACTUAL: ${{ steps.action.outputs.output }}
-        run: |
-          echo "actual: $ACTUAL"
-          if ! echo "$ACTUAL" | python3 -c "import sys, json; data = json.load(sys.stdin); assert data['name'] == 'Bob', 'name mismatch'; assert data['age'] == 25, 'age mismatch'"; then
-            echo "FAIL: output is not valid JSON or values are incorrect"
+          if ! echo "$ACTUAL" | grep -q '"name"'; then
+            echo "FAIL: expected '\"name\"' key in JSON output"
             exit 1
           fi
-          echo "PASS: output is valid JSON with expected values"
+          if ! echo "$ACTUAL" | grep -q '"Alice"'; then
+            echo "FAIL: expected '\"Alice\"' value in JSON output"
+            exit 1
+          fi
+          if ! echo "$ACTUAL" | grep -q '"age"'; then
+            echo "FAIL: expected '\"age\"' key in JSON output"
+            exit 1
+          fi
+          echo "PASS"

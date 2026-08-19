@@ -1,4 +1,4 @@
-name: Test same format conversion (JSON to JSON)
+name: Test same format (no conversion)
 on:
   workflow_dispatch:
 jobs:
@@ -7,20 +7,14 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Create input JSON file
-        run: |
-          cat > /tmp/same.json << 'EOF'
-          {"key":"value","number":42}
-          EOF
-
       - id: action
         uses: .
         with:
-          input: /tmp/same.json
-          from: json
-          to: json
+          input: tests/fixtures/sample.yaml
+          from: yaml
+          to: yaml
 
-      - name: Assert output is not empty
+      - name: Assert output matches original YAML content
         env:
           ACTUAL: ${{ steps.action.outputs.output }}
         run: |
@@ -29,19 +23,12 @@ jobs:
             echo "FAIL: output is empty"
             exit 1
           fi
-          echo "PASS: output is non-empty"
-
-      - name: Assert output contains expected content
-        env:
-          ACTUAL: ${{ steps.action.outputs.output }}
-        run: |
-          echo "actual: $ACTUAL"
-          if ! echo "$ACTUAL" | grep -q "key"; then
-            echo "FAIL: output does not contain 'key'"
+          if ! echo "$ACTUAL" | grep -q "name:"; then
+            echo "FAIL: expected 'name:' key in output"
             exit 1
           fi
-          if ! echo "$ACTUAL" | grep -q "value"; then
-            echo "FAIL: output does not contain 'value'"
+          if ! echo "$ACTUAL" | grep -q "Alice"; then
+            echo "FAIL: expected 'Alice' value in output"
             exit 1
           fi
-          echo "PASS: output contains expected content"
+          echo "PASS"

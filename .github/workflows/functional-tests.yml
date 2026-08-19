@@ -1,0 +1,119 @@
+---
+name: Functional Tests
+
+on: # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - .github/workflows/functional-tests.yml
+      - src/**
+      - tests/**
+      - action.yml
+  schedule:
+    # Every Friday at 09:00 JST
+    - cron: "0 0 * * 5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  convert:
+    name: Convert
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu", "windows", "macos"]
+        from: ["yaml", "json", "xml", "props", "lua"]
+        to: ["yaml", "json", "xml", "props", "lua"]
+    runs-on: ${{ matrix.os }}-latest
+    steps:
+      - name: Checkout ${{ github.repository }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Convert
+        uses: ./
+        id: convert
+        with:
+          input: tests/expected.${{ matrix.from }}
+          from: ${{ matrix.from }}
+          to: ${{ matrix.to }}
+      - name: Save result
+        env:
+          CONVERT_OUTPUT: ${{ steps.convert.outputs.output }}
+          MATRIX_TO: ${{ matrix.to }}
+        run: printf '%s' "${CONVERT_OUTPUT}" > "actual.${MATRIX_TO}"
+      - name: Print actual file
+        env:
+          MATRIX_TO: ${{ matrix.to }}
+        run: cat "actual.${MATRIX_TO}"
+      - name: Validate
+        env:
+          MATRIX_TO: ${{ matrix.to }}
+        run: |
+          cmp -s "tests/expected.${MATRIX_TO}" "actual.${MATRIX_TO}" \
+            || diff --strip-trailing-cr "tests/expected.${MATRIX_TO}" "actual.${MATRIX_TO}"
+      - name: Clean up
+        if: ${{ always() }}
+        env:
+          MATRIX_TO: ${{ matrix.to }}
+        run: rm -f "actual.${MATRIX_TO}"
+  convert-container:
+    name: Convert
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["alpine", "centos"]
+        from: ["yaml", "json", "xml", "props", "lua"]
+        to: ["yaml", "json", "xml", "props", "lua"]
+        include:
+          - image: alpine
+            setup-command: ""
+          - image: centos
+            setup-command: |
+              sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
+              sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
+              yum update -y
+              # cmp
+              yum install -y diffutils
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}:latest
+    steps:
+      - name: Setup
+        if: ${{ matrix.setup-command != '' }}
+        env:
+          SETUP_COMMAND: ${{ matrix.setup-command }}
+        run: printf '%s' "${SETUP_COMMAND}" | sh
+      - name: Checkout ${{ github.repository }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Convert
+        uses: ./
+        id: convert
+        with:
+          input: tests/expected.${{ matrix.from }}
+          from: ${{ matrix.from }}
+          to: ${{ matrix.to }}
+      - name: Save result
+        env:
+          CONVERT_OUTPUT: ${{ steps.convert.outputs.output }}
+          MATRIX_TO: ${{ matrix.to }}
+        run: printf '%s' "${CONVERT_OUTPUT}" > "actual.${MATRIX_TO}"
+      - name: Validate
+        env:
+          MATRIX_TO: ${{ matrix.to }}
+        run: |
+          cmp -s "tests/expected.${MATRIX_TO}" "actual.${MATRIX_TO}" \
+            || diff --strip-trailing-cr "tests/expected.${MATRIX_TO}" "actual.${MATRIX_TO}"
+      - name: Clean up
+        if: ${{ always() }}
+        env:
+          MATRIX_TO: ${{ matrix.to }}
+        run: rm -f "actual.${MATRIX_TO}"
