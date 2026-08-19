@@ -1,0 +1,15 @@
+---
+name: Linting
+
+on: # yamllint disable-line rule:truthy
+  pull_request: {}
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  pre-commit:
+    name: Pre-commit
+    uses: fabasoad/reusable-workflows/.github/workflows/wf-pre-commit.yml@c5bd8945762dab6d2f5168b65f10355887ea40a3 # main

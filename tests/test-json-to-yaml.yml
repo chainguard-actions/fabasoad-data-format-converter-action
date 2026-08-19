@@ -6,32 +6,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Create input JSON file
-        run: |
-          cat > /tmp/test-input.json << 'EOF'
-          {"name":"Alice","age":30,"active":true}
-          EOF
       - id: action
         uses: .
         with:
-          input: /tmp/test-input.json
+          input: tests/fixtures/sample.json
           from: json
           to: yaml
-      - name: Assert output contains YAML content
+      - name: Assert output is non-empty
         env:
           ACTUAL: ${{ steps.action.outputs.output }}
         run: |
-          echo "actual output:"
-          echo "$ACTUAL"
-          if echo "$ACTUAL" | grep -q "name: Alice"; then
-            echo "PASS: found 'name: Alice' in output"
-          else
-            echo "FAIL: expected 'name: Alice' in YAML output"
+          echo "actual: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output is empty"
             exit 1
           fi
-          if echo "$ACTUAL" | grep -q "age: 30"; then
-            echo "PASS: found 'age: 30' in output"
-          else
-            echo "FAIL: expected 'age: 30' in YAML output"
+          echo "PASS: output is non-empty"
+      - name: Assert output contains expected YAML fields
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          # YAML format uses "key: value" style (no quotes around keys)
+          if ! echo "$ACTUAL" | grep -q 'name:'; then
+            echo "FAIL: expected YAML key 'name:' not found"
             exit 1
           fi
+          if ! echo "$ACTUAL" | grep -q 'Bob'; then
+            echo "FAIL: expected YAML value 'Bob' not found"
+            exit 1
+          fi
+          if ! echo "$ACTUAL" | grep -q 'age:'; then
+            echo "FAIL: expected YAML key 'age:' not found"
+            exit 1
+          fi
+          # YAML output should NOT contain JSON-style curly braces at the top level
+          if echo "$ACTUAL" | grep -q '^{'; then
+            echo "FAIL: output looks like JSON, not YAML"
+            exit 1
+          fi
+          echo "PASS: output contains expected YAML fields"

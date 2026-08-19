@@ -6,38 +6,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Create input JSON file
-        run: |
-          cat > /tmp/test-same.json << 'EOF'
-          {"key":"value","number":42}
-          EOF
       - id: action
         uses: .
         with:
-          input: /tmp/test-same.json
-          from: json
-          to: json
-      - name: Assert output contains original JSON content
+          input: tests/fixtures/sample.yaml
+          from: yaml
+          to: yaml
+      - name: Assert output is non-empty
         env:
           ACTUAL: ${{ steps.action.outputs.output }}
         run: |
-          echo "actual output:"
-          echo "$ACTUAL"
-          if echo "$ACTUAL" | grep -q '"key"'; then
-            echo "PASS: found '\"key\"' in output"
-          else
-            echo "FAIL: expected '\"key\"' in output"
+          echo "actual: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output is empty"
             exit 1
           fi
-          if echo "$ACTUAL" | grep -q '"value"'; then
-            echo "PASS: found '\"value\"' in output"
-          else
-            echo "FAIL: expected '\"value\"' in output"
+          echo "PASS: output is non-empty"
+      - name: Assert output preserves YAML content
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          # When from == to, the file is just copied; content should be preserved
+          if ! echo "$ACTUAL" | grep -q 'name:'; then
+            echo "FAIL: expected YAML key 'name:' not found in same-format output"
             exit 1
           fi
-          if echo "$ACTUAL" | grep -q '"number"'; then
-            echo "PASS: found '\"number\"' in output"
-          else
-            echo "FAIL: expected '\"number\"' in output"
+          if ! echo "$ACTUAL" | grep -q 'Alice'; then
+            echo "FAIL: expected value 'Alice' not found in same-format output"
             exit 1
           fi
+          echo "PASS: same-format output preserves original content"

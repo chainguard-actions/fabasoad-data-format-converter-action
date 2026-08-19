@@ -1,0 +1,15 @@
+---
+name: Labels
+
+on: # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  maintenance:
+    name: Maintenance
+    uses: fabasoad/reusable-workflows/.github/workflows/wf-sync-labels.yml@c5bd8945762dab6d2f5168b65f10355887ea40a3 # main
