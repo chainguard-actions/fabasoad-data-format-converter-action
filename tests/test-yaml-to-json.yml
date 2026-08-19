@@ -8,38 +8,28 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Create input YAML file
         run: |
-          cat > /tmp/input.yaml << 'EOF'
-          name: Bob
-          city: London
-          score: 42
+          cat > /tmp/test-input.yaml << 'EOF'
+          name: Alice
+          age: 30
+          active: true
           EOF
       - id: action
         uses: .
         with:
-          input: /tmp/input.yaml
+          input: /tmp/test-input.yaml
           from: yaml
           to: json
-      - name: Assert output contains JSON fields
+      - name: Assert output is valid JSON with expected fields
         env:
           ACTUAL: ${{ steps.action.outputs.output }}
         run: |
           echo "actual: $ACTUAL"
-          if echo "$ACTUAL" | grep -q '"name"'; then
-            echo "PASS: found 'name' key in JSON output"
-          else
-            echo "FAIL: expected 'name' key in JSON output"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output is empty"
             exit 1
           fi
-          if echo "$ACTUAL" | grep -q '"Bob"'; then
-            echo "PASS: found 'Bob' value in JSON output"
-          else
-            echo "FAIL: expected 'Bob' value in JSON output"
-            exit 1
-          fi
-          if echo "$ACTUAL" | grep -q '"city"'; then
-            echo "PASS: found 'city' key in JSON output"
-          else
-            echo "FAIL: expected 'city' key in JSON output"
-            exit 1
-          fi
+          # Check that the output contains expected JSON keys
+          echo "$ACTUAL" | grep -q '"name"' || { echo "FAIL: missing 'name' key in JSON output"; exit 1; }
+          echo "$ACTUAL" | grep -q '"Alice"' || { echo "FAIL: missing 'Alice' value in JSON output"; exit 1; }
+          echo "$ACTUAL" | grep -q '"age"' || { echo "FAIL: missing 'age' key in JSON output"; exit 1; }
           echo "PASS"

@@ -107,9 +107,9 @@ runs:
         YQ_EXEC: "${{ steps.info.outputs.YQ_EXEC }}"
         YQ_RELEASE: "${{ steps.yq.outputs.release }}"
       run: |
-        mv "$YQ_BINARY" "$YQ_EXEC"
+        mv "${YQ_BINARY}" "${YQ_EXEC}"
         if [ "${RUNNER_OS}" != "Windows" ]; then
-          chmod +x "$YQ_EXEC"
+          chmod +x "${YQ_EXEC}"
         fi
         echo "$(pwd)" >> $GITHUB_PATH
         echo "::debug::${YQ_BINARY}@${YQ_RELEASE} has been installed"
@@ -123,7 +123,7 @@ runs:
         YQ_EXEC: "${{ steps.info.outputs.YQ_EXEC }}"
         YQ_TEMP_FILE: "${{ steps.info.outputs.YQ_TEMP_FILE }}"
       run: |
-        "$YQ_EXEC" -P "$INPUTS_INPUT" -p "$INPUTS_FROM" -o "$INPUTS_TO" > "$YQ_TEMP_FILE"
+        "${YQ_EXEC}" -P "$INPUTS_INPUT" -p "$INPUTS_FROM" -o "$INPUTS_TO" > "${YQ_TEMP_FILE}"
       shell: sh
     - name: Save output
       id: result
@@ -133,5 +133,6 @@ runs:
       with:
         script: |
           const fs = require('fs');
-          core.setOutput('data', fs.readFileSync(process.env.YQ_TEMP_FILE, 'utf-8').replace(/\s+$/gm, ''));
-          fs.unlinkSync(process.env.YQ_TEMP_FILE);
+          const tempFile = process.env.YQ_TEMP_FILE;
+          core.setOutput('data', fs.readFileSync(tempFile, 'utf-8').replace(/\s+$/gm, ''));
+          fs.unlinkSync(tempFile);

@@ -1,0 +1,181 @@
+---
+name: Functional tests
+
+on: # yamllint disable-line rule:truthy
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - ".github/workflows/functional-tests.yml"
+      - "action.yml"
+  push:
+    branches:
+      - "main"
+    paths:
+      - ".github/workflows/functional-tests.yml"
+      - "action.yml"
+  schedule:
+    - cron: "0 0 * * 1"
+
+permissions: {}
+
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  convert:
+    name: Convert
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu", "windows", "macos"]
+        from: ["yaml", "json", "xml", "props"]
+        to: ["yaml", "json", "xml", "props"]
+    runs-on: ${{ matrix.os }}-latest
+    steps:
+      - name: Checkout ${{ github.repository }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Prepare
+        run: |
+          # yaml
+          echo 's:' > expected.yaml
+          echo '  v: "1"' >> expected.yaml
+          echo '  m:' >> expected.yaml
+          echo '    - t1' >> expected.yaml
+          echo '    - t2' >> expected.yaml
+          # json
+          echo '{' > expected.json
+          echo '  "s": {' >> expected.json
+          echo '    "v": "1",' >> expected.json
+          echo '    "m": [' >> expected.json
+          echo '      "t1",' >> expected.json
+          echo '      "t2"' >> expected.json
+          echo '    ]' >> expected.json
+          echo '  }' >> expected.json
+          echo '}' >> expected.json
+          # xml
+          echo '<s>' > expected.xml
+          echo '  <v>1</v>' >> expected.xml
+          echo '  <m>t1</m>' >> expected.xml
+          echo '  <m>t2</m>' >> expected.xml
+          echo '</s>' >> expected.xml
+          # props
+          echo 's.v = 1' > expected.props
+          echo 's.m.0 = t1' >> expected.props
+          echo 's.m.1 = t2' >> expected.props
+      - name: Convert
+        uses: ./
+        id: convert
+        with:
+          input: expected.${{ matrix.from }}
+          from: ${{ matrix.from }}
+          to: ${{ matrix.to }}
+          token: ${{ secrets.PAT_GITHUB }}
+      - name: Save result
+        env:
+          CONVERT_OUTPUT: ${{ steps.convert.outputs.output }}
+          MATRIX_TO: ${{ matrix.to }}
+        run: printf '%s' "$CONVERT_OUTPUT" > "actual.$MATRIX_TO"
+      - name: Print actual file
+        env:
+          MATRIX_TO: ${{ matrix.to }}
+        run: cat "actual.$MATRIX_TO"
+      - name: Validate
+        env:
+          MATRIX_TO: ${{ matrix.to }}
+        run: cmp -s "expected.$MATRIX_TO" "actual.$MATRIX_TO" || diff "expected.$MATRIX_TO" "actual.$MATRIX_TO"
+      - name: Clean up
+        if: ${{ always() }}
+        env:
+          MATRIX_TO: ${{ matrix.to }}
+        run: |
+          rm -f expected.{json,props,xml,yaml}
+          rm -f "actual.$MATRIX_TO"
+  convert-container:
+    name: Convert
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["alpine", "centos"]
+        from: ["yaml", "json", "xml", "props"]
+        to: ["yaml", "json", "xml", "props"]
+        include:
+          - image: alpine
+            setup-command: ""
+          - image: centos
+            setup-command: |
+              sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
+              sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
+              yum update -y
+              # cmp
+              yum install -y diffutils
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}:latest
+    steps:
+      - name: Setup
+        if: ${{ matrix.setup-command != '' }}
+        env:
+          SETUP_COMMAND: ${{ matrix.setup-command }}
+        run: printf '%s' "$SETUP_COMMAND" | sh
+      - name: Checkout ${{ github.repository }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Prepare
+        run: |
+          # yaml
+          echo 's:' > expected.yaml
+          echo '  v: "1"' >> expected.yaml
+          echo '  m:' >> expected.yaml
+          echo '    - t1' >> expected.yaml
+          echo '    - t2' >> expected.yaml
+          # json
+          echo '{' > expected.json
+          echo '  "s": {' >> expected.json
+          echo '    "v": "1",' >> expected.json
+          echo '    "m": [' >> expected.json
+          echo '      "t1",' >> expected.json
+          echo '      "t2"' >> expected.json
+          echo '    ]' >> expected.json
+          echo '  }' >> expected.json
+          echo '}' >> expected.json
+          # xml
+          echo '<s>' > expected.xml
+          echo '  <v>1</v>' >> expected.xml
+          echo '  <m>t1</m>' >> expected.xml
+          echo '  <m>t2</m>' >> expected.xml
+          echo '</s>' >> expected.xml
+          # props
+          echo 's.v = 1' > expected.props
+          echo 's.m.0 = t1' >> expected.props
+          echo 's.m.1 = t2' >> expected.props
+      - name: Convert
+        uses: ./
+        id: convert
+        with:
+          input: expected.${{ matrix.from }}
+          from: ${{ matrix.from }}
+          to: ${{ matrix.to }}
+          token: ${{ secrets.PAT_GITHUB }}
+      - name: Save result
+        env:
+          CONVERT_OUTPUT: ${{ steps.convert.outputs.output }}
+          MATRIX_TO: ${{ matrix.to }}
+        run: printf '%s' "$CONVERT_OUTPUT" > "actual.$MATRIX_TO"
+      - name: Print actual file
+        env:
+          MATRIX_TO: ${{ matrix.to }}
+        run: cat "actual.$MATRIX_TO"
+      - name: Validate
+        env:
+          MATRIX_TO: ${{ matrix.to }}
+        run: cmp -s "expected.$MATRIX_TO" "actual.$MATRIX_TO" || diff "expected.$MATRIX_TO" "actual.$MATRIX_TO"
+      - name: Clean up
+        if: ${{ always() }}
+        env:
+          MATRIX_TO: ${{ matrix.to }}
+        run: |
+          rm -f expected.{json,props,xml,yaml}
+          rm -f "actual.$MATRIX_TO"

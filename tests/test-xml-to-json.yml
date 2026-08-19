@@ -1,0 +1,36 @@
+name: Test XML to JSON conversion
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create input XML file
+        run: |
+          cat > /tmp/test-input.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <person>
+            <name>Bob</name>
+            <role>developer</role>
+          </person>
+          EOF
+      - id: action
+        uses: .
+        with:
+          input: /tmp/test-input.xml
+          from: xml
+          to: json
+      - name: Assert output is JSON with expected content
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output is empty"
+            exit 1
+          fi
+          # Check that the output contains expected values from the XML
+          echo "$ACTUAL" | grep -q 'Bob' || { echo "FAIL: missing 'Bob' value in JSON output"; exit 1; }
+          echo "$ACTUAL" | grep -q 'developer' || { echo "FAIL: missing 'developer' value in JSON output"; exit 1; }
+          echo "PASS"

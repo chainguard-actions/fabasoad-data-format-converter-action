@@ -8,45 +8,45 @@
 
 **Test Policy SHA:** `843adf9e4b8f85d0c08b27b9d0b09dd094b54702`
 
-**Harden Agent Version:** `1`
+**Harden Agent Version:** `2`
 
-Action **fabasoad--data-format-converter-action/v0.2.3** was hardened automatically. 2 finding(s) were identified and resolved across 2 iteration(s).
+Action **fabasoad--data-format-converter-action/v0.2.3** was hardened automatically. 2 finding(s) were identified and resolved across 3 iteration(s).
 
 ## Findings Fixed
 
 ### script-injection (severity: high)
 
-Sub-rule (a): Multiple `${{ }}` expressions are directly interpolated inside `run:` shell command strings, allowing expression values to be parsed as shell code before the shell ever sees them.
+Multiple `run:` blocks in action.yml directly interpolate `${{ steps.* }}` expressions into shell commands (sub-rule a). YAML template substitution occurs before the shell parses the string, so any shell metacharacters in the substituted value are executed. Affected steps and offending lines:
 
-• "Check same from and to" step (line 74): `run: cp "${INPUT_INPUT}" "${{ steps.info.outputs.YQ_TEMP_FILE }}"` — the step-output value is injected directly into the shell command.
+1. "Check same from and to" step (line 63): `run: cp "${INPUT_INPUT}" "${{ steps.info.outputs.YQ_TEMP_FILE }}"`
 
-• "Install mikefarah/yq" step (lines 87, 89, 92): `mv ${{ steps.info.outputs.YQ_BINARY }} ${{ steps.info.outputs.YQ_EXEC }}`, `chmod +x ${{ steps.info.outputs.YQ_EXEC }}`, and `echo "::debug::${{ steps.info.outputs.YQ_BINARY }}@${{ steps.yq.outputs.release }} has been installed"` — step outputs injected directly into shell commands, also unquoted.
+2. "Install mikefarah/yq" step (lines 76–81): `mv ${{ steps.info.outputs.YQ_BINARY }} ${{ steps.info.outputs.YQ_EXEC }}` (also unquoted — sub-rule b), `chmod +x ${{ steps.info.outputs.YQ_EXEC }}`, and `echo "::debug::${{ steps.info.outputs.YQ_BINARY }}@..."`
 
-• "Convert" step (line 100): `run: ${{ steps.info.outputs.YQ_EXEC }} -P "$INPUTS_INPUT" ... > "${{ steps.info.outputs.YQ_TEMP_FILE }}"` — step outputs used as the command name and as a redirection target, both injected directly into the shell string.
+3. "Convert" step (line 83): `run: ${{ steps.info.outputs.YQ_EXEC }} -P "$INPUTS_INPUT" ... > "${{ steps.info.outputs.YQ_TEMP_FILE }}"`
 
-All `${{ steps.*.outputs.* }}` values are workflow-controllable and must be passed via `env:` variables and double-quoted, never interpolated directly into `run:` scripts.
+All `${{ ... }}` expressions must be moved to `env:` variables and then referenced as double-quoted shell variables (e.g., `"$YQ_EXEC"`).
 
 Locations:
 
-- `action.yml:74`
-- `action.yml:87`
-- `action.yml:89`
-- `action.yml:92`
-- `action.yml:100`
+- `action.yml:63`
+- `action.yml:76`
+- `action.yml:78`
+- `action.yml:81`
+- `action.yml:83`
 
 ### unpinned-uses (severity: high)
 
 Two `uses:` references in action.yml are pinned to mutable version tags rather than immutable 40-character commit SHAs, making the action vulnerable to supply-chain attacks if the referenced tag is moved or the repository is compromised:
 
-• `uses: robinraju/release-downloader@v1.9` (line 78) — mutable tag `v1.9`
-• `uses: actions/github-script@v7` (line 104) — mutable tag `v7`
+- `uses: robinraju/release-downloader@v1.9` (line 68) — tag `v1.9` is mutable
+- `uses: actions/github-script@v7` (line 91) — tag `v7` is mutable
 
-Both should be pinned to their full SHA digests, e.g. `uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7`.
+Each should be pinned to a full SHA, e.g. `uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7`.
 
 Locations:
 
-- `action.yml:78`
-- `action.yml:104`
+- `action.yml:68`
+- `action.yml:91`
 
 ## Iteration Notes
 
@@ -56,7 +56,7 @@ Locations:
 
 **Notes:**
 
-Fixed all 5 script-injection locations by moving ${{ steps.info.outputs.* }} expressions into env: blocks and referencing them as double-quoted shell variables. Fixed 2 unpinned-uses by pinning robinraju/release-downloader@v1.9 to SHA 368754b9c6f47c345fcfbf42bcb577c2f0f5f395 and actions/github-script@v7 to SHA f28e40c7f34bde8b3046d885e986cb6290c5673b. Also updated the 'Save output' step's JavaScript to use process.env.YQ_TEMP_FILE instead of directly interpolating the step output into the script string.
+Fixed script-injection by moving all ${{ steps.info.outputs.* }} expressions from run: shell strings into env: blocks and referencing them as double-quoted shell variables (${YQ_TEMP_FILE}, ${YQ_BINARY}, ${YQ_EXEC}, ${YQ_RELEASE}). Also fixed the Save output step by moving the YQ_TEMP_FILE expression to env: and accessing it via process.env.YQ_TEMP_FILE in JavaScript. Fixed unpinned-uses by pinning robinraju/release-downloader@v1.9 to SHA 368754b9c6f47c345fcfbf42bcb577c2f0f5f395 and actions/github-script@v7 to SHA f28e40c7f34bde8b3046d885e986cb6290c5673b, with the original tags preserved as comments.
 
 ### Iteration 2
 
@@ -64,5 +64,19 @@ Fixed all 5 script-injection locations by moving ${{ steps.info.outputs.* }} exp
 
 **Notes:**
 
-Fixed the invalid YAML in the 'Convert' step of action.yml. The `run:` field had a single-line value starting with a quoted string (`"$YQ_EXEC" -P ...`), which YAML incorrectly parsed as a complete quoted scalar and then rejected the trailing arguments. Converted it to a block scalar using `run: |` so the entire shell command is treated as a literal string.
+Fixed the YAML parsing error at line 100 in the 'Convert' step. The `run:` value started with a double-quoted string (`"${YQ_EXEC}"`), which YAML parsed as a complete quoted scalar and rejected the trailing shell arguments. Converted the single-line `run:` to a block scalar (`run: |`) so the entire shell command is treated as a literal string.
+
+### Iteration 3
+
+**Fixes applied:** script-injection, unpinned-uses, missing-permissions
+
+**Notes:**
+
+Fixed all three findings across 6 workflow files:
+
+1. script-injection (functional-tests.yml): Moved all ${{ }} expressions from run: blocks to env: blocks. The critical `run: ${{ matrix.setup-command }}` was replaced with env: SETUP_COMMAND + `printf '%s' "$SETUP_COMMAND" | sh`. Other expressions (steps.convert.outputs.output, matrix.to) were moved to env: CONVERT_OUTPUT and MATRIX_TO respectively. Both convert and convert-container jobs were fixed.
+
+2. unpinned-uses: Pinned all 11 action references to full 40-character SHA hashes with tag comments: actions/checkout@v4, fabasoad/reusable-workflows@main, simbo/changes-since-last-release-action@v1, softprops/action-gh-release@v2, fischerscode/tagger@v0, github/codeql-action/{init,analyze,upload-sarif}@v3, anchore/scan-action@v3, micnncim/action-label-syncer@v1, FantasticFiasco/action-update-license-year@v3.
+
+3. missing-permissions: Added top-level permissions blocks to all 6 workflows with minimal required permissions: functional-tests.yml and linting.yml get `{}`, release.yml gets `contents: write`, security.yml gets `contents: read` + `security-events: write`, sync-labels.yml gets `issues: write`, update-license.yml gets `contents: write` + `pull-requests: write`.
 
