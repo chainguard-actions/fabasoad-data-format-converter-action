@@ -82,7 +82,7 @@ runs:
     - name: Download mikefarah/yq
       if: ${{ inputs.from != inputs.to && steps.info.outputs.yq-installed == 'false' }}
       id: download-binary
-      uses: robinraju/release-downloader@28fc21f50d76778e7023361aa1f863e717d3d56f # v1.13
+      uses: chainguard-actions/robinraju-release-downloader@f9d5d361678d1e3714910fd5cde00e7a2491c69e # v1.13
       with:
         repository: "mikefarah/yq"
         latest: "true"
@@ -105,7 +105,7 @@ runs:
             chmod +x "${yq_path}"
           fi
         fi
-        safe_yq_path=$(printf '%s' "${yq_path}" | tr -d '\n\r')
+        safe_yq_path="$(printf '%s' "${yq_path}" | tr -d '\n\r')"
         echo "yq-path=${safe_yq_path}" >> "$GITHUB_OUTPUT"
       shell: sh
     - name: Print yq version
