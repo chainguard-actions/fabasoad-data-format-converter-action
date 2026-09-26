@@ -10,103 +10,71 @@
 
 **Harden Agent Version:** `2`
 
-Action **fabasoad--data-format-converter-action/v1.0.0** was hardened automatically. 6 finding(s) were identified and resolved across 2 iteration(s).
+Action **fabasoad--data-format-converter-action/v1.0.0** was hardened automatically. 5 finding(s) were identified and resolved across 2 iteration(s).
 
 ## Findings Fixed
 
 ### script-injection (severity: high)
 
-Sub-rule (a): Multiple `run:` blocks in action.yml directly interpolate `${{ ... }}` expressions inside shell commands, enabling script injection. (1) 'Install mikefarah/yq' step interpolates `${{ steps.info.outputs.yq-installed }}`, `${{ steps.info.outputs.bin-path }}`, and `${{ steps.define-binary.outputs.name }}` directly in the shell script. (2) 'Print yq version' step uses `run: ${{ steps.install-yq.outputs.yq-path }} --version` — the entire command is an expression. (3) 'Convert' step interpolates `${{ steps.install-yq.outputs.yq-path }}` directly in the shell script. These step outputs are workflow-controllable and must be passed via env vars with quoted expansions.
+Rule (a): The 'Install mikefarah/yq' run: block directly interpolates ${{ steps.info.outputs.yq-installed }}, ${{ steps.info.outputs.bin-path }}, and ${{ steps.define-binary.outputs.name }} inside shell commands. These steps.*.outputs.* values are workflow-controllable and flow through YAML template substitution before the shell sees them, enabling command injection. Offending lines: `if [ "${{ steps.info.outputs.yq-installed }}" = "true" ]; then` and `yq_path="${{ steps.info.outputs.bin-path }}/${{ steps.define-binary.outputs.name }}"`.
 
 Locations:
 
-- `action.yml:68`
-- `action.yml:80`
+- `action.yml:75`
+- `action.yml:78`
+
+### script-injection (severity: high)
+
+Rule (a): The 'Print yq version' run: block is entirely a ${{ }} expression: `run: ${{ steps.install-yq.outputs.yq-path }} --version`. The step output value is interpolated directly as a shell command, allowing an attacker who can influence step outputs to execute arbitrary commands.
+
+Locations:
+
 - `action.yml:87`
 
 ### script-injection (severity: high)
 
-Sub-rule (a): Multiple `run:` blocks in .github/workflows/functional-tests.yml directly interpolate `${{ ... }}` expressions inside shell commands. (1) 'Print converted file' step: `run: cat ${{ steps.convert.outputs.result-path }}/expected-${{ matrix.from }}.${{ matrix.to }}`. (2) 'Validate' step: `${{ matrix.to }}`, `${{ matrix.from }}`, and `${{ steps.convert.outputs.result-path }}` are interpolated directly in the run block. (3) 'Setup' step in convert-container job: `run: ${{ matrix.setup-command }}` — the entire run command is a matrix expression, allowing arbitrary shell command injection.
+Rule (a): The 'Convert' run: block directly interpolates ${{ steps.install-yq.outputs.yq-path }} inside the shell script: `"${{ steps.install-yq.outputs.yq-path }}" \`. This step output is workflow-controllable and is interpolated before the shell parses the command, enabling command injection.
 
 Locations:
 
-- `.github/workflows/functional-tests.yml:38`
-- `.github/workflows/functional-tests.yml:40`
-- `.github/workflows/functional-tests.yml:65`
-
-### script-injection (severity: high)
-
-Sub-rule (a): Multiple `run:` blocks in .github/workflows/test-source-pattern.yml directly interpolate `${{ ... }}` expressions inside shell commands. (1) 'List resulting files' step: `run: ls -la ${{ steps.convert.outputs.result-path }}`. (2) 'Test action completion' step: `${{ steps.convert.outputs.result-path }}` and `${{ matrix.expected-files-amount }}` are interpolated directly in the run block.
-
-Locations:
-
-- `.github/workflows/test-source-pattern.yml:47`
-- `.github/workflows/test-source-pattern.yml:49`
+- `action.yml:95`
 
 ### github-env-injection (severity: high)
 
-In action.yml, the 'Install mikefarah/yq' step constructs `yq_path` from `${{ steps.info.outputs.bin-path }}/${{ steps.define-binary.outputs.name }}` (step outputs that are workflow-controllable) and writes it to `$GITHUB_OUTPUT` via `echo "yq-path=${yq_path}" >> "$GITHUB_OUTPUT"` without applying the required sanitization (`printf '%s' ... | tr -d '\n\r'`). A malicious value containing newlines could inject additional entries into the output file.
+The 'Install mikefarah/yq' run: block constructs yq_path from ${{ steps.info.outputs.bin-path }} and ${{ steps.define-binary.outputs.name }} (both workflow-controllable steps.*.outputs.* values) and then writes it to $GITHUB_OUTPUT via `echo "yq-path=${yq_path}" >> "$GITHUB_OUTPUT"` without applying the required sanitization (`printf '%s' ... | tr -d '\n\r'`). A newline injected into either step output could poison GITHUB_OUTPUT with attacker-controlled key-value pairs.
+
+Locations:
+
+- `action.yml:84`
+
+### unpinned-uses (severity: high)
+
+The composite action step 'Download mikefarah/yq' references `uses: robinraju/release-downloader@v1`, which is a mutable tag reference rather than a pinned 40-character commit SHA. If the tag is moved or the repository is compromised, the action will silently execute different code.
 
 Locations:
 
 - `action.yml:68`
-
-### unpinned-uses (severity: high)
-
-Multiple `uses:` references are pinned to mutable tags or branch names instead of immutable 40-character commit SHAs, making the action vulnerable to supply-chain attacks: action.yml: `robinraju/release-downloader@v1`; functional-tests.yml: `actions/checkout@v4`; linting.yml: `fabasoad/reusable-workflows/.github/workflows/wf-pre-commit.yml@main`; release.yml: `fabasoad/reusable-workflows/.github/workflows/wf-github-release.yml@main`; security.yml: `fabasoad/reusable-workflows/.github/workflows/wf-security-sast.yml@main`; sync-labels.yml: `fabasoad/reusable-workflows/.github/workflows/wf-sync-labels.yml@main`; test-source-pattern.yml: `actions/checkout@v4`; update-license.yml: `fabasoad/reusable-workflows/.github/workflows/wf-update-license.yml@main`.
-
-Locations:
-
-- `action.yml:57`
-- `.github/workflows/functional-tests.yml:34`
-- `.github/workflows/functional-tests.yml:68`
-- `.github/workflows/linting.yml:12`
-- `.github/workflows/release.yml:11`
-- `.github/workflows/security.yml:14`
-- `.github/workflows/sync-labels.yml:12`
-- `.github/workflows/test-source-pattern.yml:38`
-- `.github/workflows/update-license.yml:11`
-
-### missing-permissions (severity: medium)
-
-The following workflow files have no top-level `permissions:` key and no job-level `permissions:` key on any of their jobs, meaning they run with the default (potentially broad) token permissions: functional-tests.yml, linting.yml, release.yml, sync-labels.yml, test-source-pattern.yml, update-license.yml. Each should declare minimal required permissions at the top level or per-job.
-
-Locations:
-
-- `.github/workflows/functional-tests.yml:1`
-- `.github/workflows/linting.yml:1`
-- `.github/workflows/release.yml:1`
-- `.github/workflows/sync-labels.yml:1`
-- `.github/workflows/test-source-pattern.yml:1`
-- `.github/workflows/update-license.yml:1`
 
 ## Iteration Notes
 
 ### Iteration 1
 
-**Fixes applied:** script-injection, github-env-injection, unpinned-uses, missing-permissions
+**Fixes applied:** unpinned-uses, script-injection, github-env-injection
 
 **Notes:**
 
-Fixed all findings across action.yml and .github/workflows/ files:
-
-1. script-injection (action.yml): Moved ${{ steps.info.outputs.yq-installed }}, ${{ steps.info.outputs.bin-path }}, ${{ steps.define-binary.outputs.name }} into env vars in 'Install mikefarah/yq' step; moved ${{ steps.install-yq.outputs.yq-path }} into env var YQ_PATH for both 'Print yq version' and 'Convert' steps.
-
-2. github-env-injection (action.yml): Added printf '%s' ... | tr -d '\n\r' sanitization before writing yq-path to $GITHUB_OUTPUT.
-
-3. script-injection (functional-tests.yml): Moved result-path, matrix.from, matrix.to into env vars for Print/Validate steps; moved matrix.setup-command into env var and used sh -c for Setup step.
-
-4. script-injection (test-source-pattern.yml): Moved result-path and expected-files-amount into env vars.
-
-5. unpinned-uses: Pinned robinraju/release-downloader@v1 to SHA 28fc21f50d76778e7023361aa1f863e717d3d56f, actions/checkout@v4 to SHA 11d5960a326750d5838078e36cf38b85af677262, and fabasoad/reusable-workflows@main to SHA 10062f8186847226cb4865efbb8047795d372bae across all workflow files.
-
-6. missing-permissions: Added minimal permissions blocks to functional-tests.yml, linting.yml, release.yml, sync-labels.yml, test-source-pattern.yml, and update-license.yml.
+Fixed all 5 findings in hardened/action/action.yml:
+1. Pinned robinraju/release-downloader@v1 to full SHA @28fc21f50d76778e7023361aa1f863e717d3d56f.
+2. In 'Install mikefarah/yq': moved steps.info.outputs.yq-installed, steps.info.outputs.bin-path, and steps.define-binary.outputs.name into env vars (YQ_INSTALLED, BIN_PATH, BINARY_NAME) and replaced inline ${{ }} expressions in the shell script with those env vars.
+3. Sanitized yq_path before writing to GITHUB_OUTPUT using printf '%s' | tr -d '\n\r'.
+4. In 'Print yq version': moved steps.install-yq.outputs.yq-path to env var YQ_PATH; run: now executes "$YQ_PATH" --version.
+5. In 'Convert': moved steps.install-yq.outputs.yq-path to env var YQ_PATH; shell script now references "${YQ_PATH}" instead of the inline expression.
 
 ### Iteration 2
 
-**Fixes applied:** invalid-yaml
+**Fixes applied:** github-env-injection, invalid-yaml
 
 **Notes:**
 
-Fixed invalid YAML at line 99 in action.yml. The `run: "${YQ_PATH}" --version` single-line value caused a YAML parse error because YAML interpreted `"${YQ_PATH}"` as a complete quoted scalar and then rejected the trailing `--version`. Converted to a block scalar (`run: |` with the command indented on the next line) so the entire command is treated as literal string content.
+Fixed three findings: (1) src/collect-info.sh line 31 - sanitized bin_path before writing to GITHUB_OUTPUT using `printf '%s' "${bin_path}" | tr -d '\n\r'`; (2) src/convert.sh line 26 - sanitized result_path before writing to GITHUB_OUTPUT using `printf '%s' "${result_path}" | tr -d '\n\r'`; (3) action.yml line 99 - converted single-line `run: "$YQ_PATH" --version` to a block scalar `run: |\n  "$YQ_PATH" --version` to fix the YAML parse error.
 

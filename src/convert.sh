@@ -23,7 +23,8 @@ main() {
     result_path="$(cygpath -u "${result_path}")"
   fi
   mkdir -p "${result_path}"
-  echo "result-path=${result_path}" >> "$GITHUB_OUTPUT"
+  safe_result_path="$(printf '%s' "${result_path}" | tr -d '\n\r')"
+  echo "result-path=${safe_result_path}" >> "$GITHUB_OUTPUT"
   log_info "Converting files into target directory: ${result_path}"
 
   for source_file in "${source_files[@]}"; do

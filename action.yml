@@ -82,7 +82,7 @@ runs:
     - name: Download mikefarah/yq
       if: ${{ inputs.from != inputs.to && steps.info.outputs.yq-installed == 'false' }}
       id: download-binary
-      uses: robinraju/release-downloader@28fc21f50d76778e7023361aa1f863e717d3d56f # v1
+      uses: chainguard-actions/robinraju-release-downloader@f9d5d361678d1e3714910fd5cde00e7a2491c69e # v1
       with:
         repository: "mikefarah/yq"
         latest: "true"
@@ -97,7 +97,7 @@ runs:
         BIN_PATH: "${{ steps.info.outputs.bin-path }}"
         BINARY_NAME: "${{ steps.define-binary.outputs.name }}"
       run: |
-        if [ "${YQ_INSTALLED}" = "true" ]; then
+        if [ "$YQ_INSTALLED" = "true" ]; then
           yq_path="$(which yq)"
         else
           yq_path="${BIN_PATH}/${BINARY_NAME}"
@@ -113,7 +113,7 @@ runs:
       env:
         YQ_PATH: "${{ steps.install-yq.outputs.yq-path }}"
       run: |
-        "${YQ_PATH}" --version
+        "$YQ_PATH" --version
       shell: sh
     - name: Convert
       id: convert
