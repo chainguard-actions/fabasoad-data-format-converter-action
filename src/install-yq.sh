@@ -14,8 +14,7 @@ main() {
   if [ "${RUNNER_OS}" != "Windows" ]; then
     chmod +x "${bin_path}/yq"
   fi
-  safe_bin_path=$(printf '%s' "${bin_path}" | tr -d '\n\r')
-  echo "${safe_bin_path}" >> "$GITHUB_PATH"
+  echo "${bin_path}" >> "$GITHUB_PATH"
   log_info "${binary_name}@${tag_name} has been installed"
 }
 

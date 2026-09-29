@@ -79,7 +79,7 @@ runs:
     - name: Download mikefarah/yq
       if: ${{ inputs.from != inputs.to && steps.info.outputs.yq-installed == 'false' }}
       id: download-binary
-      uses: robinraju/release-downloader@28fc21f50d76778e7023361aa1f863e717d3d56f # v1
+      uses: chainguard-actions/robinraju-release-downloader@f9d5d361678d1e3714910fd5cde00e7a2491c69e # v1
       with:
         repository: "mikefarah/yq"
         latest: "true"
@@ -119,9 +119,12 @@ runs:
       shell: sh
     - name: Save output
       id: result
-      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+      uses: chainguard-actions/actions-github-script@c016e3163cf6a74fc76e781c8239af596ae9b9b7 # v7
+      env:
+        YQ_TEMP_FILE_PATH: "${{ steps.info.outputs.yq-temp-file-path }}"
       with:
         script: |
           const fs = require('fs');
-          core.setOutput('data', fs.readFileSync('${{ steps.info.outputs.yq-temp-file-path }}', 'utf-8').replace(/\s+$/gm, ''));
-          fs.unlinkSync('${{ steps.info.outputs.yq-temp-file-path }}');
+          const filePath = process.env.YQ_TEMP_FILE_PATH;
+          core.setOutput('data', fs.readFileSync(filePath, 'utf-8').replace(/\s+$/gm, ''));
+          fs.unlinkSync(filePath);
