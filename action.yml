@@ -48,7 +48,7 @@ runs:
         YQ_TEMP_FILE: ".data-format-converter-action"
       run: |
         echo "YQ_TEMP_FILE=$YQ_TEMP_FILE" >> "$GITHUB_OUTPUT"
-        YQ_INSTALLED=$(if command -v yq > /dev/null 2>&1; then echo true; else echo false; fi)
+        YQ_INSTALLED=$(if command -v yq >/dev/null 2>&1; then echo true; else echo false; fi)
         echo "YQ_INSTALLED=$YQ_INSTALLED" >> "$GITHUB_OUTPUT"
         if [ "${RUNNER_OS}" = "macOS" ]; then
           if [ "${RUNNER_ARCH}" = "ARM64" ]; then
@@ -105,9 +105,9 @@ runs:
         YQ_EXEC: "${{ steps.info.outputs.YQ_EXEC }}"
         YQ_RELEASE: "${{ steps.yq.outputs.release }}"
       run: |
-        mv "$YQ_BINARY" "$YQ_EXEC"
+        mv "${YQ_BINARY}" "${YQ_EXEC}"
         if [ "${RUNNER_OS}" != "Windows" ]; then
-          chmod +x "$YQ_EXEC"
+          chmod +x "${YQ_EXEC}"
         fi
         echo "$(pwd)" >> $GITHUB_PATH
         echo "::debug::${YQ_BINARY}@${YQ_RELEASE} has been installed"
@@ -121,7 +121,7 @@ runs:
         YQ_EXEC: "${{ steps.info.outputs.YQ_EXEC }}"
         YQ_TEMP_FILE: "${{ steps.info.outputs.YQ_TEMP_FILE }}"
       run: |
-        "$YQ_EXEC" -P "$INPUTS_INPUT" -p "$INPUTS_FROM" -o "$INPUTS_TO" > "$YQ_TEMP_FILE"
+        "${YQ_EXEC}" -P "$INPUTS_INPUT" -p "$INPUTS_FROM" -o "$INPUTS_TO" > "${YQ_TEMP_FILE}"
       shell: sh
     - name: Save output
       id: result
