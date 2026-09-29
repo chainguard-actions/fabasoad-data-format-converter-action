@@ -92,7 +92,7 @@ runs:
       shell: sh
     - name: Download mikefarah/yq
       if: ${{ inputs.from != inputs.to && steps.info.outputs.YQ_INSTALLED == 'false' }}
-      uses: robinraju/release-downloader@368754b9c6f47c345fcfbf42bcb577c2f0f5f395 # v1.9
+      uses: chainguard-actions/robinraju-release-downloader@d206bae1e993bb0a6e7cc4e9c3157f4cfd87ac8a # v1.9
       with:
         repository: mikefarah/yq
         latest: true
@@ -127,12 +127,11 @@ runs:
       shell: sh
     - name: Save output
       id: result
-      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+      uses: chainguard-actions/actions-github-script@c016e3163cf6a74fc76e781c8239af596ae9b9b7 # v7
       env:
         YQ_TEMP_FILE: "${{ steps.info.outputs.YQ_TEMP_FILE }}"
       with:
         script: |
           const fs = require('fs');
-          const tempFile = process.env.YQ_TEMP_FILE;
-          core.setOutput('data', fs.readFileSync(tempFile, 'utf-8').replace(/\s+$/gm, ''));
-          fs.unlinkSync(tempFile);
+          core.setOutput('data', fs.readFileSync(process.env.YQ_TEMP_FILE, 'utf-8').replace(/\s+$/gm, ''));
+          fs.unlinkSync(process.env.YQ_TEMP_FILE);
