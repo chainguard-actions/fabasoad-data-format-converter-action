@@ -6,18 +6,18 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 ## Versions
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| v0 | [`v0`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0) | [`669e1dc`](https://github.com/fabasoad/data-format-converter-action/commit/669e1dc59f761c72975d528debbc75040637bc9a) |
-| v0.2 | [`v0.2`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0.2) | [`669e1dc`](https://github.com/fabasoad/data-format-converter-action/commit/669e1dc59f761c72975d528debbc75040637bc9a) |
-| v0.2.3 | [`v0.2.3`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0.2.3) | [`669e1dc`](https://github.com/fabasoad/data-format-converter-action/commit/669e1dc59f761c72975d528debbc75040637bc9a) |
-| v0.2.4 | [`v0.2.4`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0.2.4) | [`1fec9e2`](https://github.com/fabasoad/data-format-converter-action/commit/1fec9e20471129f3e6ed96e391c3a3c50937a9e9) |
-| v0.3 | [`v0.3`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0.3) | [`585a23f`](https://github.com/fabasoad/data-format-converter-action/commit/585a23fcd2b5546b69398234a5c966144286653c) |
-| v0.3.0 | [`v0.3.0`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0.3.0) | [`585a23f`](https://github.com/fabasoad/data-format-converter-action/commit/585a23fcd2b5546b69398234a5c966144286653c) |
-| v1 | [`v1`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v1) | [`0cf9754`](https://github.com/fabasoad/data-format-converter-action/commit/0cf9754ff455fb5687c472262d1f0df53854a3ca) |
-| v1.0 | [`v1.0`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v1.0) | [`0cf9754`](https://github.com/fabasoad/data-format-converter-action/commit/0cf9754ff455fb5687c472262d1f0df53854a3ca) |
-| v1.0.0 | [`v1.0.0`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v1.0.0) | [`0cf9754`](https://github.com/fabasoad/data-format-converter-action/commit/0cf9754ff455fb5687c472262d1f0df53854a3ca) |
-| v1.0.1 | [`v1.0.1`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v1.0.1) | [`bb8f387`](https://github.com/fabasoad/data-format-converter-action/commit/bb8f3876dfc0e2b758ca12d1cb657be5b3525fbe) |
+| Version | Tag | Upstream commit | Hardening report |
+|---------|-----|-----------------|------------------|
+| v0 | [`v0`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0) | [`669e1dc`](https://github.com/fabasoad/data-format-converter-action/commit/669e1dc59f761c72975d528debbc75040637bc9a) | — |
+| v0.2 | [`v0.2`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0.2) | [`669e1dc`](https://github.com/fabasoad/data-format-converter-action/commit/669e1dc59f761c72975d528debbc75040637bc9a) | — |
+| v0.2.3 | [`v0.2.3`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0.2.3) | [`669e1dc`](https://github.com/fabasoad/data-format-converter-action/commit/669e1dc59f761c72975d528debbc75040637bc9a) | [`HARDENING.md`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/blob/v0.2.3/HARDENING.md) |
+| v0.2.4 | [`v0.2.4`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0.2.4) | [`1fec9e2`](https://github.com/fabasoad/data-format-converter-action/commit/1fec9e20471129f3e6ed96e391c3a3c50937a9e9) | [`HARDENING.md`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/blob/v0.2.4/HARDENING.md) |
+| v0.3 | [`v0.3`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0.3) | [`585a23f`](https://github.com/fabasoad/data-format-converter-action/commit/585a23fcd2b5546b69398234a5c966144286653c) | — |
+| v0.3.0 | [`v0.3.0`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v0.3.0) | [`585a23f`](https://github.com/fabasoad/data-format-converter-action/commit/585a23fcd2b5546b69398234a5c966144286653c) | [`HARDENING.md`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/blob/v0.3.0/HARDENING.md) |
+| v1 | [`v1`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v1) | [`0cf9754`](https://github.com/fabasoad/data-format-converter-action/commit/0cf9754ff455fb5687c472262d1f0df53854a3ca) | — |
+| v1.0 | [`v1.0`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v1.0) | [`0cf9754`](https://github.com/fabasoad/data-format-converter-action/commit/0cf9754ff455fb5687c472262d1f0df53854a3ca) | — |
+| v1.0.0 | [`v1.0.0`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v1.0.0) | [`0cf9754`](https://github.com/fabasoad/data-format-converter-action/commit/0cf9754ff455fb5687c472262d1f0df53854a3ca) | [`HARDENING.md`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/blob/v1.0.0/HARDENING.md) |
+| v1.0.1 | [`v1.0.1`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/tree/v1.0.1) | [`bb8f387`](https://github.com/fabasoad/data-format-converter-action/commit/bb8f3876dfc0e2b758ca12d1cb657be5b3525fbe) | [`HARDENING.md`](https://github.com/chainguard-actions/fabasoad-data-format-converter-action/blob/v1.0.1/HARDENING.md) |
 
 ## Privacy
 
